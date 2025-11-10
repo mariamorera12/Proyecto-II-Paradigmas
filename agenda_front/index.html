@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sistema Planificación Tareas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<nav class="navbar navbar-dark mb-4">
+    <div class="container-fluid">
+        <span class="navbar-brand">Sistema Planificación Tareas</span>
+        <span class="badge bg-success text-white" id="statusBadge">Conectando...</span>
+    </div>
+</nav>
+
+<div class="container">
+    <!-- CONFIG -->
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Configuración</h5>
+            <button class="btn btn-primary btn-sm me-2" onclick="cargarConfiguracion()">Recargar Configuración</button>
+            <div id="configResult" class="mt-3"></div>
+        </div>
+    </div>
+
+    <!-- GESTIÓN DE CONFIGURACIÓN -->
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Gestión de Prioridades y Climas</h5>
+
+            <ul class="nav nav-tabs mb-3" id="configTabs">
+                <li class="nav-item">
+                    <button class="nav-link active" id="tab-prioridades" onclick="mostrarTab('prioridades')">Prioridades</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="tab-climas" onclick="mostrarTab('climas')">Climas</button>
+                </li>
+            </ul>
+
+            <!-- PRIORIDADES -->
+            <div id="panel-prioridades">
+                <form id="formPrioridad" class="row g-3 mb-3">
+                    <div class="col-md-5">
+                        <label class="form-label">Nivel *</label>
+                        <input type="text" id="nivelPrioridad" class="form-control" required placeholder="Alta, Media, Baja...">
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">Peso *</label>
+                        <input type="number" id="pesoPrioridad" class="form-control" required min="1" placeholder="Ej: 3">
+                    </div>
+                    <div class="col-md-2 text-end align-self-end">
+                        <button type="submit" class="btn btn-primary w-100">Guardar</button>
+                    </div>
+                </form>
+
+                <table class="table table-hover table-striped">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nivel</th>
+                        <th>Peso</th>
+                        <th>Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody id="tablaPrioridades">
+                    <tr><td colspan="4" class="text-center">Cargando prioridades...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- CLIMAS -->
+            <div id="panel-climas" style="display:none;">
+                <form id="formClima" class="row g-3 mb-3">
+                    <div class="col-md-10">
+                        <label class="form-label">Tipo de Clima *</label>
+                        <input type="text" id="tipoClima" class="form-control" required placeholder="soleado, lluvioso, cualquiera...">
+                    </div>
+                    <div class="col-md-2 text-end align-self-end">
+                        <button type="submit" class="btn btn-primary w-100">Guardar</button>
+                    </div>
+                </form>
+
+                <table class="table table-hover table-striped">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Tipo</th>
+                        <th>Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody id="tablaClimas">
+                    <tr><td colspan="3" class="text-center">Cargando climas...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- GESTIÓN DE TAREAS -->
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Crear Tarea</h5>
+            <form id="formTarea" class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Nombre *</label>
+                    <input type="text" id="nombre" class="form-control" required placeholder="Ej: Comprar comida">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Prioridad *</label>
+                    <select id="prioridad" class="form-select" required>
+                        <option value="">Seleccione...</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Tiempo (min) *</label>
+                    <input type="number" id="tiempo" class="form-control" required min="1" placeholder="60">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Clima *</label>
+                    <select id="clima" class="form-select" required>
+                        <option value="">Seleccione...</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Fecha *</label>
+                    <input type="date" id="fecha" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Tarea Dependencia</label>
+                    <select id="dependencia" class="form-select">
+                        <option value="">Sin dependencia</option>
+                    </select>
+                </div>
+                <div class="col-12 text-end">
+                    <button type="submit" class="btn btn-primary">Guardar Tarea</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- VER TAREAS -->
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Lista de Tareas</h5>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <button class="btn btn-primary btn-sm" onclick="verTareas()">Ver Todas</button>
+                </div>
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <input type="date" id="fechaFiltro" class="form-control">
+                        <button class="btn btn-primary" onclick="verTareasPorFecha()">Filtrar por Fecha</button>
+                    </div>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Prioridad</th>
+                        <th>Tiempo (min)</th>
+                        <th>Clima</th>
+                        <th>Fecha</th>
+                        <th>Estado</th>
+                        <th>Dependencia</th>
+                        <th>Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody id="tablaTareas">
+                    <tr><td colspan="9" class="text-center">Cargando tareas...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- PLANIFICACIÓN -->
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Planificar Día</h5>
+            <form id="formPlan" class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label class="form-label">Tiempo Disponible (horas) *</label>
+                    <input type="number" id="tiempoDisponible" class="form-control" required min="1" max="24" placeholder="8">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Clima Actual *</label>
+                    <select id="climaActual" class="form-select" required>
+                        <option value="">Seleccione...</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Fecha *</label>
+                    <input type="date" id="fechaPlan" class="form-control" required>
+                </div>
+                <div class="col-12 text-end">
+                    <button type="submit" class="btn btn-success">Generar Plan</button>
+                </div>
+            </form>
+            <div id="resultadoPlan"></div>
+        </div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
