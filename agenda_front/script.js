@@ -9,13 +9,17 @@ let configuracion = {
 
 // ========== INICIALIZACIÓN ==========
 window.addEventListener('DOMContentLoaded', async () => {
+    await inicializarSistema();
+    setFechaHoy();
+    updateStatus('success', 'Conectado');
+});
+
+async function inicializarSistema() {
     await cargarConfiguracion();
     await cargarPrioridades();
     await cargarClimas();
     await verTareas();
-    setFechaHoy();
-    updateStatus('success', 'Conectado');
-});
+}
 
 function setFechaHoy() {
     const hoy = new Date().toISOString().split('T')[0];
@@ -37,16 +41,21 @@ async function handleFetch(url, options = {}) {
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        return await response.json();
+        const text = await response.text();
+        return text ? JSON.parse(text) : null;
+
     } catch (error) {
         console.error('Error en petición:', error);
-        showAlert('danger', `Error: ${error.message}`);
         throw error;
     }
 }
 
-function showAlert(type, message, containerId = 'healthResult') {
+function showAlert(type, message, containerId = 'configResult') {
     const container = document.getElementById(containerId);
+    if (!container) {
+        console.warn(`Contenedor '${containerId}' no encontrado para mostrar alerta`);
+        return;
+    }
     container.innerHTML = `<div class="alert alert-${type} mt-2">${message}</div>`;
     setTimeout(() => { container.innerHTML = ''; }, 5000);
 }
@@ -72,11 +81,16 @@ async function cargarConfiguracion() {
         configuracion.prioridades = prioridades;
         configuracion.climas = climas;
 
+        // Actualizar selects
         llenarSelectPrioridad('prioridad', prioridades);
         llenarSelectClima('clima', climas);
         llenarSelectClima('climaActual', climas);
 
         showAlert('success', `Configuración cargada: ${prioridades.length} prioridades, ${climas.length} climas`, 'configResult');
+
+        // Actualizar también las tablas de gestión
+        renderPrioridades(prioridades);
+        renderClimas(climas);
     } catch (error) {
         showAlert('danger', 'Error al cargar configuración', 'configResult');
     }
@@ -95,7 +109,10 @@ function mostrarTab(tab) {
 async function cargarPrioridades() {
     try {
         const prioridades = await handleFetch(`${API_AGENDA}/prioridades`);
+        configuracion.prioridades = prioridades;
         renderPrioridades(prioridades);
+        // Actualizar también los selects
+        llenarSelectPrioridad('prioridad', prioridades);
     } catch (e) {
         document.getElementById('tablaPrioridades').innerHTML =
             `<tr><td colspan="4" class="text-center text-danger">Error al cargar prioridades</td></tr>`;
@@ -104,7 +121,7 @@ async function cargarPrioridades() {
 
 function renderPrioridades(prioridades) {
     const tbody = document.getElementById('tablaPrioridades');
-    if (!prioridades.length) {
+    if (!prioridades || prioridades.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Sin prioridades registradas</td></tr>`;
         return;
     }
@@ -135,7 +152,7 @@ document.getElementById('formPrioridad').addEventListener('submit', async (e) =>
         });
         showAlert('success', 'Prioridad guardada correctamente');
         e.target.reset();
-        await cargarConfiguracion();
+        // Recargar solo prioridades
         await cargarPrioridades();
     } catch {
         showAlert('danger', 'Error al guardar prioridad');
@@ -153,7 +170,7 @@ async function editarPrioridad(id, nivel, peso) {
             body: JSON.stringify({nivel: nuevoNivel, peso: parseInt(nuevoPeso)})
         });
         showAlert('success', 'Prioridad actualizada');
-        await cargarConfiguracion();
+        // Recargar solo prioridades
         await cargarPrioridades();
     } catch {
         showAlert('danger', 'Error al actualizar prioridad');
@@ -165,7 +182,7 @@ async function eliminarPrioridad(id) {
     try {
         await handleFetch(`${API_AGENDA}/prioridades/${id}`, {method: 'DELETE'});
         showAlert('success', 'Prioridad eliminada');
-        await cargarConfiguracion();
+        // Recargar solo prioridades
         await cargarPrioridades();
     } catch {
         showAlert('danger', 'Error al eliminar prioridad');
@@ -176,7 +193,11 @@ async function eliminarPrioridad(id) {
 async function cargarClimas() {
     try {
         const climas = await handleFetch(`${API_AGENDA}/climas`);
+        configuracion.climas = climas;
         renderClimas(climas);
+        // Actualizar también los selects
+        llenarSelectClima('clima', climas);
+        llenarSelectClima('climaActual', climas);
     } catch {
         document.getElementById('tablaClimas').innerHTML =
             `<tr><td colspan="3" class="text-center text-danger">Error al cargar climas</td></tr>`;
@@ -185,7 +206,7 @@ async function cargarClimas() {
 
 function renderClimas(climas) {
     const tbody = document.getElementById('tablaClimas');
-    if (!climas.length) {
+    if (!climas || climas.length === 0) {
         tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">Sin climas registrados</td></tr>`;
         return;
     }
@@ -212,7 +233,7 @@ document.getElementById('formClima').addEventListener('submit', async (e) => {
         });
         showAlert('success', 'Clima guardado correctamente');
         e.target.reset();
-        await cargarConfiguracion();
+        // Recargar solo climas
         await cargarClimas();
     } catch {
         showAlert('danger', 'Error al guardar clima');
@@ -229,7 +250,7 @@ async function editarClima(id, tipo) {
             body: JSON.stringify({ tipo: nuevoTipo })
         });
         showAlert('success', 'Clima actualizado');
-        await cargarConfiguracion();
+        // Recargar solo climas
         await cargarClimas();
     } catch {
         showAlert('danger', 'Error al actualizar clima');
@@ -241,7 +262,7 @@ async function eliminarClima(id) {
     try {
         await handleFetch(`${API_AGENDA}/climas/${id}`, { method: 'DELETE' });
         showAlert('success', 'Clima eliminado');
-        await cargarConfiguracion();
+        // Recargar solo climas
         await cargarClimas();
     } catch {
         showAlert('danger', 'Error al eliminar clima');
@@ -250,14 +271,28 @@ async function eliminarClima(id) {
 
 function llenarSelectPrioridad(id, prioridades) {
     const select = document.getElementById(id);
+    const valorActual = select.value; // Guardar valor actual
+
     select.innerHTML = '<option value="">Seleccione...</option>' +
         prioridades.map(p => `<option value="${p.nivel}">${p.nivel} (Peso: ${p.peso})</option>`).join('');
+
+    // Restaurar valor si existe
+    if (valorActual && prioridades.some(p => p.nivel === valorActual)) {
+        select.value = valorActual;
+    }
 }
 
 function llenarSelectClima(id, climas) {
     const select = document.getElementById(id);
+    const valorActual = select.value; // Guardar valor actual
+
     select.innerHTML = '<option value="">Seleccione...</option>' +
         climas.map(c => `<option value="${c.tipo}">${c.tipo}</option>`).join('');
+
+    // Restaurar valor si existe
+    if (valorActual && climas.some(c => c.tipo === valorActual)) {
+        select.value = valorActual;
+    }
 }
 
 async function cargarTareasDependencia() {
@@ -266,8 +301,15 @@ async function cargarTareasDependencia() {
         configuracion.tareas = tareas;
 
         const select = document.getElementById('dependencia');
+        const valorActual = select.value; // Guardar valor actual
+
         select.innerHTML = '<option value="">Sin dependencia</option>' +
             tareas.map(t => `<option value="${t.id}">${t.nombre} (ID: ${t.id})</option>`).join('');
+
+        // Restaurar valor si existe
+        if (valorActual && tareas.some(t => t.id == valorActual)) {
+            select.value = valorActual;
+        }
     } catch (error) {
         console.error('Error al cargar tareas para dependencia:', error);
     }
@@ -300,6 +342,7 @@ document.getElementById('formTarea').addEventListener('submit', async (e) => {
         showAlert('success', 'Tarea creada correctamente');
         e.target.reset();
         setFechaHoy();
+        // Recargar tareas
         await verTareas();
     } catch (error) {
         showAlert('danger', 'Error al crear tarea');
@@ -311,6 +354,7 @@ async function verTareas() {
         const tareas = await handleFetch(`${API_AGENDA}/tareas`);
         configuracion.tareas = tareas;
         renderTareas(tareas);
+        // Actualizar select de dependencias
         await cargarTareasDependencia();
     } catch (error) {
         document.getElementById('tablaTareas').innerHTML =
@@ -377,6 +421,7 @@ async function completarTarea(id) {
             method: 'PATCH'
         });
         showAlert('success', 'Tarea completada');
+        // Recargar tareas
         await verTareas();
     } catch (error) {
         showAlert('danger', 'Error al completar tarea');
@@ -384,6 +429,7 @@ async function completarTarea(id) {
 }
 
 async function editarTarea(id) {
+    // Asegurarnos de tener las tareas más recientes
     const tareas = await handleFetch(`${API_AGENDA}/tareas`);
     const tarea = tareas.find(t => t.id === id);
     if (!tarea) {
@@ -459,6 +505,7 @@ async function editarTarea(id) {
             body: JSON.stringify(body)
         });
         showAlert('success', 'Tarea actualizada correctamente');
+        // Recargar tareas
         await verTareas();
     } catch (error) {
         showAlert('danger', 'Error al actualizar tarea: ' + error.message);
@@ -473,6 +520,7 @@ async function eliminarTarea(id) {
             method: 'DELETE'
         });
         showAlert('success', 'Tarea eliminada');
+        // Recargar tareas
         await verTareas();
     } catch (error) {
         showAlert('danger', 'Error al eliminar tarea');
